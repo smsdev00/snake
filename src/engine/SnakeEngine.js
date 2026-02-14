@@ -14,6 +14,8 @@ const OPPOSITE = {
   RIGHT: 'LEFT',
 };
 
+const ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+
 export default class SnakeEngine {
   constructor() {
     this.gridSize = GRID_SIZE;
@@ -32,6 +34,33 @@ export default class SnakeEngine {
     this.score = 0;
     this.gameOver = false;
     this.food = this._spawnFood();
+    return this.getState();
+  }
+
+  getState() {
+    return {
+      snake: this.snake.map(s => ({ ...s })),
+      food: { ...this.food },
+      direction: this.direction,
+      score: this.score,
+      gameOver: this.gameOver,
+      gridSize: this.gridSize,
+    };
+  }
+
+  step(action) {
+    const dir = ACTIONS[action];
+    if (dir) this.setDirection(dir);
+    const prevScore = this.score;
+    this.update();
+    let reward = 0;
+    if (this.gameOver) reward = -10;
+    else if (this.score > prevScore) reward = 10;
+    return {
+      state: this.getState(),
+      reward,
+      done: this.gameOver,
+    };
   }
 
   setDirection(dir) {

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 
 const CELL_SIZE = 25;
 const BG_COLOR = '#1a1a2e';
@@ -14,10 +14,16 @@ const KEY_MAP = {
   ArrowRight: 'RIGHT',
 };
 
-export default function SnakeGame({ engine, tickInterval, onScoreChange }) {
+const SnakeGame = forwardRef(function SnakeGame({ engine, tickInterval, onScoreChange }, ref) {
   const canvasRef = useRef(null);
   const lastTickRef = useRef(0);
   const animFrameRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    getState: () => engine.getState(),
+    step: (action) => engine.step(action),
+    reset: () => engine.reset(),
+  }), [engine]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -117,4 +123,6 @@ export default function SnakeGame({ engine, tickInterval, onScoreChange }) {
       style={{ display: 'block', border: '2px solid #333', borderRadius: 4 }}
     />
   );
-}
+});
+
+export default SnakeGame;
