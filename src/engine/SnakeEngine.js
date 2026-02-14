@@ -1,0 +1,86 @@
+const GRID_SIZE = 20;
+
+const DIRECTIONS = {
+  UP: { x: 0, y: -1 },
+  DOWN: { x: 0, y: 1 },
+  LEFT: { x: -1, y: 0 },
+  RIGHT: { x: 1, y: 0 },
+};
+
+const OPPOSITE = {
+  UP: 'DOWN',
+  DOWN: 'UP',
+  LEFT: 'RIGHT',
+  RIGHT: 'LEFT',
+};
+
+export default class SnakeEngine {
+  constructor() {
+    this.gridSize = GRID_SIZE;
+    this.reset();
+  }
+
+  reset() {
+    const mid = Math.floor(this.gridSize / 2);
+    this.snake = [
+      { x: mid, y: mid },
+      { x: mid - 1, y: mid },
+      { x: mid - 2, y: mid },
+    ];
+    this.direction = 'RIGHT';
+    this.nextDirection = 'RIGHT';
+    this.score = 0;
+    this.gameOver = false;
+    this.food = this._spawnFood();
+  }
+
+  setDirection(dir) {
+    if (OPPOSITE[dir] === this.direction) return;
+    this.nextDirection = dir;
+  }
+
+  update() {
+    if (this.gameOver) return;
+
+    this.direction = this.nextDirection;
+    const delta = DIRECTIONS[this.direction];
+    const head = this.snake[0];
+    const newHead = { x: head.x + delta.x, y: head.y + delta.y };
+
+    // Wall collision
+    if (
+      newHead.x < 0 || newHead.x >= this.gridSize ||
+      newHead.y < 0 || newHead.y >= this.gridSize
+    ) {
+      this.gameOver = true;
+      return;
+    }
+
+    // Self collision
+    if (this.snake.some(seg => seg.x === newHead.x && seg.y === newHead.y)) {
+      this.gameOver = true;
+      return;
+    }
+
+    this.snake.unshift(newHead);
+
+    // Eat food
+    if (newHead.x === this.food.x && newHead.y === this.food.y) {
+      this.score += 10;
+      this.food = this._spawnFood();
+    } else {
+      this.snake.pop();
+    }
+  }
+
+  _spawnFood() {
+    const occupied = new Set(this.snake.map(s => `${s.x},${s.y}`));
+    const free = [];
+    for (let x = 0; x < this.gridSize; x++) {
+      for (let y = 0; y < this.gridSize; y++) {
+        if (!occupied.has(`${x},${y}`)) free.push({ x, y });
+      }
+    }
+    return free[Math.floor(Math.random() * free.length)];
+  }
+}

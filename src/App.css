@@ -1,0 +1,62 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family: monospace;
+  color: #e0e0e0;
+}
+
+h1 {
+  margin: 0.5rem 0;
+  font-size: 2rem;
+  letter-spacing: 0.3em;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.score {
+  font-size: 1.2rem;
+  font-weight: bold;
+  min-width: 100px;
+}
+
+.toolbar button,
+.speed-control button {
+  background: #2a2a3e;
+  color: #ccc;
+  border: 1px solid #444;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.toolbar button:hover,
+.speed-control button:hover {
+  background: #3a3a5e;
+}
+
+.speed-control button.active {
+  background: #4ade80;
+  color: #111;
+  border-color: #4ade80;
+}
+
+.speed-control {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.hint {
+  margin-top: 0.75rem;
+  color: #666;
+  font-size: 0.85rem;
+}
