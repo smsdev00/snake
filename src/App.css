@@ -102,6 +102,37 @@ h1 {
   cursor: default;
 }
 
+.model-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.model-controls button {
+  background: #2a2a3e;
+  color: #ccc;
+  border: 1px solid #444;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.model-controls button:hover:not(:disabled) {
+  background: #3a3a5e;
+}
+
+.model-controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.model-badge {
+  font-size: 0.75rem;
+  color: #4ade80;
+}
+
 .training-stats {
   display: flex;
   gap: 1rem;

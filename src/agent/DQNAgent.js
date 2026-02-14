@@ -88,17 +88,50 @@ export default class DQNAgent {
 
   async save() {
     await this.model.save('localstorage://snake-dqn');
+    localStorage.setItem('snake-dqn-meta', JSON.stringify({ epsilon: this.epsilon }));
   }
 
   async load() {
     try {
       this.model = await tf.loadLayersModel('localstorage://snake-dqn');
       this.model.compile({ optimizer: tf.train.adam(this.learningRate), loss: 'meanSquaredError' });
-      this.epsilon = this.epsilonMin;
+      const meta = JSON.parse(localStorage.getItem('snake-dqn-meta') || '{}');
+      this.epsilon = meta.epsilon ?? this.epsilonMin;
       return true;
     } catch {
       return false;
     }
+  }
+
+  async exportToFile() {
+    // Save to a virtual IOHandler that captures the artifacts
+    let modelJSON, weightData;
+    await this.model.save(tf.io.withSaveHandler(async (artifacts) => {
+      modelJSON = artifacts.modelTopology;
+      const specs = artifacts.weightSpecs;
+      weightData = Array.from(new Uint8Array(artifacts.weightData));
+      return { modelArtifactsInfo: { dateSaved: new Date() } };
+    }));
+    return JSON.stringify({
+      modelTopology: modelJSON,
+      weightSpecs: this.model.getWeights().map(w => ({ name: w.name, shape: w.shape, dtype: w.dtype })),
+      weightData,
+      meta: { epsilon: this.epsilon },
+    });
+  }
+
+  async importFromFile(jsonString) {
+    const data = JSON.parse(jsonString);
+    const weightData = new Uint8Array(data.weightData).buffer;
+    const modelArtifacts = {
+      modelTopology: data.modelTopology,
+      weightSpecs: data.weightSpecs,
+      weightData,
+    };
+    this.model.dispose();
+    this.model = await tf.loadLayersModel(tf.io.fromMemory(modelArtifacts));
+    this.model.compile({ optimizer: tf.train.adam(this.learningRate), loss: 'meanSquaredError' });
+    this.epsilon = data.meta?.epsilon ?? this.epsilonMin;
   }
 
   dispose() {

@@ -25,13 +25,24 @@ export default function App() {
     episode: 0, epsilon: 1.0, avgReward: 0, bestScore: 0,
   });
 
-  // Lazily create agent
+  const [modelLoaded, setModelLoaded] = useState(false);
+
+  // Lazily create agent, auto-load saved model
   function getAgent() {
     if (!agentRef.current) {
       agentRef.current = new DQNAgent();
+      agentRef.current.load().then((ok) => {
+        if (ok) {
+          setModelLoaded(true);
+          setTrainingStats(s => ({ ...s, epsilon: agentRef.current.epsilon }));
+        }
+      });
     }
     return agentRef.current;
   }
+
+  // Initialize agent on mount to trigger auto-load
+  useEffect(() => { getAgent(); }, []);
 
   const handleNewGame = useCallback(() => {
     engine.reset();
@@ -99,8 +110,12 @@ export default function App() {
     runEpisode();
   }, [trainingStats.bestScore]);
 
-  const stopTraining = useCallback(() => {
+  const stopTraining = useCallback(async () => {
     trainingRef.current = false;
+    if (agentRef.current) {
+      await agentRef.current.save();
+      setModelLoaded(true);
+    }
     setAiMode('human');
   }, []);
 
@@ -152,6 +167,35 @@ export default function App() {
     else startPlaying();
   }, [aiMode, stopPlaying, startPlaying]);
 
+  const handleExport = useCallback(async () => {
+    const agent = getAgent();
+    const json = await agent.exportToFile();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'snake-dqn-model.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleImport = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const agent = getAgent();
+      await agent.importFromFile(text);
+      await agent.save();
+      setModelLoaded(true);
+      setTrainingStats(s => ({ ...s, epsilon: agent.epsilon }));
+    };
+    input.click();
+  }, []);
+
   const modeLabel = aiMode === 'human' ? 'Human' : aiMode === 'training' ? 'Training...' : 'AI Playing';
 
   return (
@@ -186,6 +230,9 @@ export default function App() {
         onTrain={handleTrain}
         onWatch={handleWatch}
         onStop={handleStop}
+        onExport={handleExport}
+        onImport={handleImport}
+        modelLoaded={modelLoaded}
       />
       <p className="hint">
         {aiMode === 'human' ? 'Arrow keys to move' : aiMode === 'training' ? 'Training in background...' : 'AI is playing'}
