@@ -14,10 +14,14 @@ const KEY_MAP = {
   ArrowRight: 'RIGHT',
 };
 
-const SnakeGame = forwardRef(function SnakeGame({ engine, tickInterval, onScoreChange }, ref) {
+const ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT'];
+
+const SnakeGame = forwardRef(function SnakeGame({ engine, tickInterval, onScoreChange, aiAction }, ref) {
   const canvasRef = useRef(null);
   const lastTickRef = useRef(0);
   const animFrameRef = useRef(null);
+  const aiActionRef = useRef(aiAction);
+  aiActionRef.current = aiAction;
 
   useImperativeHandle(ref, () => ({
     getState: () => engine.getState(),
@@ -89,6 +93,9 @@ const SnakeGame = forwardRef(function SnakeGame({ engine, tickInterval, onScoreC
 
     function loop(timestamp) {
       if (timestamp - lastTickRef.current >= tickInterval) {
+        if (aiAction != null) {
+          engine.setDirection(ACTIONS[aiAction]);
+        }
         engine.update();
         onScoreChange(engine.score);
         lastTickRef.current = timestamp;
@@ -104,6 +111,7 @@ const SnakeGame = forwardRef(function SnakeGame({ engine, tickInterval, onScoreC
 
   useEffect(() => {
     function handleKey(e) {
+      if (aiActionRef.current != null) return;
       if (KEY_MAP[e.key]) {
         e.preventDefault();
         engine.setDirection(KEY_MAP[e.key]);

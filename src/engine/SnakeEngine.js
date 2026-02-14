@@ -33,6 +33,7 @@ export default class SnakeEngine {
     this.nextDirection = 'RIGHT';
     this.score = 0;
     this.gameOver = false;
+    this.stepsWithoutFood = 0;
     this.food = this._spawnFood();
     return this.getState();
   }
@@ -51,11 +52,32 @@ export default class SnakeEngine {
   step(action) {
     const dir = ACTIONS[action];
     if (dir) this.setDirection(dir);
+
+    const head = this.snake[0];
+    const prevDist = Math.abs(head.x - this.food.x) + Math.abs(head.y - this.food.y);
     const prevScore = this.score;
+
     this.update();
+
     let reward = 0;
-    if (this.gameOver) reward = -10;
-    else if (this.score > prevScore) reward = 10;
+    if (this.gameOver) {
+      reward = -10;
+    } else if (this.score > prevScore) {
+      reward = 10;
+      this.stepsWithoutFood = 0;
+    } else {
+      this.stepsWithoutFood++;
+      // Timeout: too many steps without eating
+      if (this.stepsWithoutFood > this.gridSize * this.gridSize) {
+        this.gameOver = true;
+        reward = -10;
+      } else {
+        const newHead = this.snake[0];
+        const newDist = Math.abs(newHead.x - this.food.x) + Math.abs(newHead.y - this.food.y);
+        reward = newDist < prevDist ? 1 : -1;
+      }
+    }
+
     return {
       state: this.getState(),
       reward,

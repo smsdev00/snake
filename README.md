@@ -1,38 +1,71 @@
 # Snake RL
 
-Snake clásico implementado en el navegador, diseñado como base para entrenar un agente de Reinforcement Learning.
-
-## Objetivo
-
-Construir un juego Snake completo en tres fases incrementales: primero jugable por humanos, luego con una API para agentes, y finalmente con un agente DQN que aprende a jugar solo.
+Snake clásico implementado en el navegador con un agente de Reinforcement Learning (DQN) que entrena directamente en el browser usando TensorFlow.js.
 
 ## Stack
 
 - Vite + React
 - Canvas 2D para renderizado
-- TensorFlow.js (Fase 3)
+- TensorFlow.js
+
+## Instalación
+
+```bash
+npm install
+npm run dev
+```
+
+Abre `http://localhost:5173` en el navegador.
+
+## Cómo usar
+
+### Modo Human (por defecto)
+
+- Usa las **flechas del teclado** para mover la serpiente.
+- Come la comida roja para crecer y sumar puntos.
+- Evita chocar contra las paredes o contra tu propio cuerpo.
+- Pulsa **Space** o **Enter** para reiniciar después de un Game Over.
+- Cambia la velocidad con los botones **Slow / Normal / Fast**.
+
+### Modo Training (entrenar la IA)
+
+1. Pulsa el botón **Train** en el panel debajo del tablero.
+2. El agente DQN entrena en segundo plano (headless, sin renderizar) ejecutando miles de episodios.
+3. El panel muestra estadísticas en tiempo real:
+   - **Episode**: número de episodio actual
+   - **Epsilon**: probabilidad de acción aleatoria (baja a medida que aprende)
+   - **Avg Reward**: recompensa promedio de los últimos 100 episodios
+   - **Best Score**: mejor puntuación alcanzada
+4. Pulsa **Stop Training** cuando quieras detener el entrenamiento.
+
+> Recomendación: deja entrenar al menos 500-1000 episodios para ver resultados decentes. Epsilon debería bajar por debajo de 0.1.
+
+### Modo Watch AI Play (ver la IA jugar)
+
+1. Después de entrenar, pulsa **Watch AI Play**.
+2. La serpiente se mueve sola usando el modelo entrenado.
+3. El teclado queda desactivado mientras la IA juega.
+4. Pulsa **Stop Watching** para volver al modo humano.
 
 ## Arquitectura
 
-El motor de juego (`SnakeEngine`) es una clase JavaScript pura sin dependencias de React. Esto permite:
-
-- Usarlo desde componentes React (Fase 1)
-- Exponerlo como API para agentes externos (Fase 2)
-- Ejecutarlo en modo headless a alta velocidad para entrenamiento (Fase 3)
-
 ```
 src/
-├── engine/
-│   └── SnakeEngine.js      # Lógica pura: grid, snake, colisiones, score
+├── agent/
+│   ├── features.js          # Extrae 11 features binarios del estado
+│   └── DQNAgent.js          # Agente DQN con TensorFlow.js
 ├── components/
-│   └── SnakeGame.jsx        # Canvas + game loop + input de teclado
-├── App.jsx                  # Orquestación, UI de controles
+│   ├── SnakeGame.jsx        # Canvas + game loop + soporte modo AI
+│   └── TrainingPanel.jsx    # Panel de controles y stats de entrenamiento
+├── engine/
+│   └── SnakeEngine.js       # Lógica pura: grid, snake, colisiones, reward shaping
+├── App.jsx                  # Orquestación de los tres modos
 └── App.css
 ```
 
-## Fases
+## Fases de desarrollo
 
-### Fase 1: Juego jugable (completada)
+### Fase 1: Juego jugable
 
 Juego Snake funcional controlado con teclado.
 
@@ -42,14 +75,9 @@ Juego Snake funcional controlado con teclado.
 - Score y selector de velocidad (Slow / Normal / Fast)
 - Game Over con reinicio (Space/Enter)
 
-```bash
-npm install
-npm run dev
-```
-
 ### Fase 2: API para IA
 
-Exponer el motor como API que un agente pueda consumir.
+Motor expuesto como API que un agente puede consumir.
 
 - `getState()` — representación numérica del estado del juego
 - `step(action)` — ejecutar una acción y recibir reward
@@ -58,9 +86,23 @@ Exponer el motor como API que un agente pueda consumir.
 
 ### Fase 3: Agente DQN
 
-Modo headless y agente que aprende con Deep Q-Network.
+Agente Deep Q-Network que entrena y juega en el navegador.
 
-- Modo headless (sin canvas) para entrenamiento rápido
-- Agente DQN con TensorFlow.js
-- Visualización del entrenamiento (reward por episodio, epsilon decay)
-- Modo replay para ver al agente entrenado jugar
+- **Features (11 inputs)**: peligro recto/derecha/izquierda, dirección actual (one-hot), posición relativa de la comida
+- **Red neuronal**: 11 → 256 (ReLU) → 64 (ReLU) → 4 (linear)
+- **Reward shaping**: +10 comer, -10 morir, +1 acercarse a comida, -1 alejarse
+- **Timeout**: game over si la serpiente da más de 400 pasos sin comer
+- **Entrenamiento headless**: loop rápido sin renderizado para máxima velocidad
+- **Modo visual**: ver al agente entrenado jugar en tiempo real
+
+#### Hiperparámetros
+
+| Parámetro     | Valor  |
+| ------------- | ------ |
+| Replay buffer | 50,000 |
+| Batch size    | 64     |
+| Gamma         | 0.95   |
+| Epsilon start | 1.0    |
+| Epsilon min   | 0.01   |
+| Epsilon decay | 0.995  |
+| Learning rate | 0.001  |
