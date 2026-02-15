@@ -93,8 +93,8 @@ const SnakeGame = forwardRef(function SnakeGame({ engine, tickInterval, onScoreC
 
     function loop(timestamp) {
       if (timestamp - lastTickRef.current >= tickInterval) {
-        if (aiAction != null) {
-          engine.setDirection(ACTIONS[aiAction]);
+        if (aiActionRef.current != null) {
+          engine.setDirection(ACTIONS[aiActionRef.current]);
         }
         engine.update();
         onScoreChange(engine.score);

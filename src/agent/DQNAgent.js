@@ -13,6 +13,7 @@ export default class DQNAgent {
     this.epsilonDecay = 0.995;
     this.learningRate = 0.001;
     this.model = this._buildModel();
+    this.disposed = false;
   }
 
   _buildModel() {
@@ -28,6 +29,10 @@ export default class DQNAgent {
     if (Math.random() < this.epsilon) {
       return Math.floor(Math.random() * this.outputSize);
     }
+    return this.actGreedy(features);
+  }
+
+  actGreedy(features) {
     return tf.tidy(() => {
       const input = tf.tensor2d([features]);
       const prediction = this.model.predict(input);
@@ -81,6 +86,9 @@ export default class DQNAgent {
     xs.dispose();
     ys.dispose();
 
+  }
+
+  decayEpsilon() {
     if (this.epsilon > this.epsilonMin) {
       this.epsilon *= this.epsilonDecay;
     }
@@ -136,5 +144,6 @@ export default class DQNAgent {
 
   dispose() {
     this.model.dispose();
+    this.disposed = true;
   }
 }

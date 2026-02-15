@@ -29,7 +29,7 @@ export default function App() {
 
   // Lazily create agent, auto-load saved model
   function getAgent() {
-    if (!agentRef.current) {
+    if (!agentRef.current || agentRef.current.disposed) {
       agentRef.current = new DQNAgent();
       agentRef.current.load().then((ok) => {
         if (ok) {
@@ -60,38 +60,19 @@ export default function App() {
     let episode = 0;
     let bestScore = trainingStats.bestScore;
 
-    function runEpisode() {
+    // Persistent state across frames
+    let state = trainEngine.reset();
+    let features = extractFeatures(state);
+    let totalReward = 0;
+    let episodesDone = 0;
+
+    function trainingLoop() {
       if (!trainingRef.current) return;
 
-      let state = trainEngine.reset();
-      let features = extractFeatures(state);
-      let totalReward = 0;
-      let done = false;
+      const deadline = performance.now() + 12;
+      episodesDone = 0;
 
-      function stepLoop() {
-        if (!trainingRef.current) return;
-        if (done) {
-          episode++;
-          rewardHistory.push(totalReward);
-          if (rewardHistory.length > 100) rewardHistory.shift();
-          const avgReward = rewardHistory.reduce((a, b) => a + b, 0) / rewardHistory.length;
-          if (state.score > bestScore) bestScore = state.score;
-
-          if (episode % 5 === 0) {
-            setTrainingStats({
-              episode,
-              epsilon: agent.epsilon,
-              avgReward,
-              bestScore,
-            });
-          }
-
-          agent.train().then(() => {
-            setTimeout(runEpisode, 0);
-          });
-          return;
-        }
-
+      while (performance.now() < deadline && trainingRef.current) {
         const action = agent.act(features);
         const result = trainEngine.step(action);
         const nextFeatures = extractFeatures(result.state);
@@ -99,24 +80,54 @@ export default function App() {
         totalReward += result.reward;
         features = nextFeatures;
         state = result.state;
-        done = result.done;
 
-        setTimeout(stepLoop, 0);
+        if (result.done) {
+          episode++;
+          episodesDone++;
+          agent.decayEpsilon();
+          rewardHistory.push(totalReward);
+          if (rewardHistory.length > 100) rewardHistory.shift();
+          if (state.score > bestScore) bestScore = state.score;
+
+          state = trainEngine.reset();
+          features = extractFeatures(state);
+          totalReward = 0;
+        }
       }
 
-      stepLoop();
+      if (!trainingRef.current) return;
+
+      const avgReward = rewardHistory.length > 0
+        ? rewardHistory.reduce((a, b) => a + b, 0) / rewardHistory.length
+        : 0;
+      setTrainingStats({ episode, epsilon: agent.epsilon, avgReward, bestScore });
+
+      if (episodesDone > 0) {
+        agent.train()
+          .then(() => { rafRef.current = requestAnimationFrame(trainingLoop); })
+          .catch((e) => { console.error('train error:', e); rafRef.current = requestAnimationFrame(trainingLoop); });
+      } else {
+        rafRef.current = requestAnimationFrame(trainingLoop);
+      }
     }
 
-    runEpisode();
+    rafRef.current = requestAnimationFrame(trainingLoop);
   }, [trainingStats.bestScore]);
 
-  const stopTraining = useCallback(async () => {
+  const rafRef = useRef(null);
+
+  const stopTraining = useCallback(() => {
     trainingRef.current = false;
-    if (agentRef.current) {
-      await agentRef.current.save();
-      setModelLoaded(true);
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     }
     setAiMode('human');
+    if (agentRef.current && !agentRef.current.disposed) {
+      agentRef.current.save()
+        .then(() => setModelLoaded(true))
+        .catch(() => {});
+    }
   }, []);
 
   // --- AI Playing (visual) ---
@@ -135,9 +146,9 @@ export default function App() {
       }
       const state = engine.getState();
       const features = extractFeatures(state);
-      const action = agent.act(features);
+      const action = agent.actGreedy(features);
       setAiAction(action);
-    }, 50); // Compute action faster than render tick
+    }, 50);
   }, [engine]);
 
   const stopPlaying = useCallback(() => {
