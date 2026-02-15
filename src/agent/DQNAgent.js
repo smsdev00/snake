@@ -2,7 +2,7 @@ import * as tf from '@tensorflow/tfjs';
 
 export default class DQNAgent {
   constructor() {
-    this.inputSize = 11;
+    this.inputSize = 28;
     this.outputSize = 4;
     this.replayBuffer = [];
     this.bufferSize = 50000;
